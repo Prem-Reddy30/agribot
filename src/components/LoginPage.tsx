@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Leaf, LogIn } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, auth, googleProvider } from '../lib/firebase';
+import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, auth, googleProvider } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type LoginPageProps = {
@@ -16,6 +16,31 @@ export function LoginPage({ onLogin, onNavigateToSignUp }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle redirect callback if user fell back to redirect method
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        setIsLoading(true);
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log('Redirect sign in successful:', result.user);
+          onLogin(result.user.email || 'google-user@gmail.com', 'google-auth');
+        }
+      } catch (err: any) {
+        console.error('Redirect error:', err);
+        // Only show error if it's explicitly about operation not being allowed
+        if (err.code === 'auth/operation-not-allowed') {
+          setError('Google sign-in is not enabled. Please enable it in Firebase Console.');
+        } else {
+          setError(`Google sign-in failed: ${err.message || err.code}`);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkRedirect();
+  }, [onLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

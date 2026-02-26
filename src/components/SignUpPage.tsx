@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Leaf, UserPlus, ArrowLeft } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithPopup, auth, googleProvider } from '../lib/firebase';
+import { createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, auth, googleProvider } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type SignUpPageProps = {
@@ -18,6 +18,30 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle redirect callback if user fell back to redirect method
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        setIsLoading(true);
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log('Redirect sign up successful:', result.user);
+          onSignUp(result.user.displayName || 'Google User', result.user.email || 'google-user@gmail.com', 'google-auth');
+        }
+      } catch (err: any) {
+        console.error('Redirect error:', err);
+        if (err.code === 'auth/operation-not-allowed') {
+          setError('Google sign-in is not enabled. Please enable it in Firebase Console.');
+        } else {
+          setError(`Google sign-up failed: ${err.message || err.code}`);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkRedirect();
+  }, [onSignUp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,24 +98,34 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
     try {
       console.log('Attempting Google sign up...');
 
-      // Firebase Google authentication
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log('Google sign up successful:', result.user);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Sign up timed out.')), 30000);
+      });
 
-      // Firebase auth state change will handle the rest
-      onSignUp(result.user.displayName || 'Google User', result.user.email || 'google-user@gmail.com', 'google-auth');
+      // Try popup first
+      try {
+        const result = await Promise.race([
+          signInWithPopup(auth, googleProvider),
+          timeoutPromise
+        ]) as any;
+        console.log('Google sign up successful:', result.user);
+        onSignUp(result.user.displayName || 'Google User', result.user.email || 'google-user@gmail.com', 'google-auth');
+      } catch (popupError: any) {
+        // Fallback to redirect
+        if (popupError.code === 'auth/popup-closed-by-user' || popupError.code === 'auth/popup-blocked' || popupError.message?.includes('timed out')) {
+          console.log('Using redirect fallback');
+          await signInWithRedirect(auth, googleProvider);
+          setError('Redirecting to Google...');
+        } else {
+          throw popupError;
+        }
+      }
     } catch (err: any) {
       console.error('Google sign up error:', err);
 
       // Provide specific error messages
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Sign up was cancelled. Please try again.');
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('Popup was blocked by your browser. Please allow popups and try again.');
-      } else if (err.code === 'auth/cancelled-popup-request') {
-        setError('Sign up was cancelled. Please try again.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized for Google sign in. Please contact support.');
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Google sign-in is not enabled. Please enable it in Firebase Console.');
       } else if (err.code === 'auth/api-key-not-allowed') {
         setError('API key is not allowed. Please check Firebase configuration.');
       } else if (err.message && err.message.includes('Google provider is not configured')) {
@@ -100,7 +134,9 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
         setError(`Google sign up failed: ${err.message || 'Please try again.'}`);
       }
     } finally {
-      setIsLoading(false);
+      if (error !== 'Redirecting to Google...') {
+        setIsLoading(false);
+      }
     }
   };
 
