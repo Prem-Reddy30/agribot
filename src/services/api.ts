@@ -1,15 +1,17 @@
 import { auth } from '../lib/firebase';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Auto-detect backend URL: use localhost for dev, or same-origin for deployed
+const API_BASE_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:5000/api'
+  : `${window.location.origin}/api`;
 
 // Get current user's Firebase token
 const getCurrentUserToken = async (): Promise<string | null> => {
   const user = auth.currentUser;
   if (!user) {
-    // For simplified backend, return null instead of throwing error
     return null;
   }
-  
+
   try {
     const token = await user.getIdToken();
     return token;
@@ -19,36 +21,51 @@ const getCurrentUserToken = async (): Promise<string | null> => {
   }
 };
 
-// API request helper with authentication
+// API request helper with authentication and timeout
 const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
   const token = await getCurrentUserToken();
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...options.headers as Record<string, string>,
   };
 
-  // Only add Authorization header if token exists (for simplified backend)
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  // Add a 10-second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      throw new Error(`API Error: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ''}`);
+    }
+
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. Please check if the backend server is running on port 5000.');
+    }
+    throw error;
   }
-
-  return response;
 };
 
 // Chat API
 export const sendMessageToAI = async (
   message: string,
-  conversationHistory: Array<{role: string; content: string}> = [],
+  conversationHistory: Array<{ role: string; content: string }> = [],
   language: string = 'en'
 ): Promise<{ response: string; timestamp: string }> => {
   try {
