@@ -24,132 +24,128 @@ export function Navigation({ currentPage, onNavigate, user, onLogout }: Navigati
   ];
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50">
+    <nav className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200/60 dark:border-slate-700/60 sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo - Left Side */}
+          {/* Logo */}
           <div
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex items-center gap-2.5 cursor-pointer group"
             onClick={() => onNavigate('home')}
           >
-            <div className="bg-green-600 p-2 rounded-lg">
-              <Leaf className="w-6 h-6 text-white" />
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-2 rounded-xl shadow-md shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow">
+              <Leaf className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">{t('nav.assistant')}</span>
+            <span className="text-lg font-bold gradient-text tracking-tight">{t('nav.assistant')}</span>
           </div>
 
-          {/* Navigation Items - Center */}
-          <div className="hidden lg:flex items-center gap-6">
+          {/* Desktop Nav Items */}
+          <div className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`text - sm font - medium transition - colors ${currentPage === item.id
-                    ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400'
-                    : 'text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400'
-                  } py - 1`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentPage === item.id
+                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
+                  }`}
               >
                 {item.label}
               </button>
             ))}
           </div>
 
-          {/* Right Side Controls */}
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
+          {/* Right Controls */}
+          <div className="flex items-center gap-2">
             <div className="hidden sm:block">
               <SimpleThemeToggle />
             </div>
-
-            {/* Language Selector */}
             <div className="hidden sm:block">
               <LanguageSelector />
             </div>
 
-            {/* Auth Section */}
+            {/* Auth */}
             {user ? (
-              <div className="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-600">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                    <User className="w-3 h-3 text-green-600 dark:text-green-400" />
+              <div className="flex items-center gap-2 pl-3 ml-1 border-l border-gray-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
+                    <User className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 hidden md:block max-w-20 truncate">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 hidden md:block max-w-24 truncate">
                     {user.name || user.email?.split('@')[0]}
                   </span>
                 </div>
                 <button
                   onClick={onLogout}
-                  className="flex items-center text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                   title="Logout"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => onNavigate('login')}
-                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                className="btn-primary px-4 py-2 text-sm"
               >
                 {t('nav.login')}
               </button>
             )}
-          </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="lg:hidden p-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? (
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            ) : (
-              <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            )}
-          </button>
+            {/* Mobile Menu */}
+            <button
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? (
+                <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              ) : (
+                <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="lg:hidden pb-4 border-t border-gray-200 dark:border-gray-600">
-            {/* Mobile Navigation Items */}
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setIsMenuOpen(false);
-                }}
-                className={`block w - full text - left px - 4 py - 3 text - sm font - medium ${currentPage === item.id
-                    ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  } `}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="lg:hidden pb-4 border-t border-gray-100 dark:border-slate-800 animate-fade-in-up">
+            <div className="pt-2 space-y-1">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    onNavigate(item.id);
+                    setIsMenuOpen(false);
+                  }}
+                  className={`block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${currentPage === item.id
+                      ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                    }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
 
-            {/* Mobile Theme & Language */}
-            <div className="border-t border-gray-200 dark:border-gray-600 mt-2 pt-2">
+            <div className="border-t border-gray-100 dark:border-slate-800 mt-2 pt-2">
               <div className="px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('nav.theme')}</span>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('nav.theme')}</span>
                 <SimpleThemeToggle />
               </div>
               <div className="px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('nav.language')}</span>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('nav.language')}</span>
                 <LanguageSelector />
               </div>
             </div>
 
-            {/* Mobile Auth Section */}
-            <div className="border-t border-gray-200 dark:border-gray-600 mt-2 pt-2">
+            <div className="border-t border-gray-100 dark:border-slate-800 mt-2 pt-2">
               {user ? (
                 <>
                   <div className="px-4 py-3 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
+                      <User className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
                         {user.name || user.email}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
@@ -160,7 +156,7 @@ export function Navigation({ currentPage, onNavigate, user, onLogout }: Navigati
                       onLogout?.();
                       setIsMenuOpen(false);
                     }}
-                    className="block w-full text-left px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900"
+                    className="block w-full text-left px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                   >
                     <div className="flex items-center gap-2">
                       <LogOut className="w-4 h-4" />
@@ -174,7 +170,7 @@ export function Navigation({ currentPage, onNavigate, user, onLogout }: Navigati
                     onNavigate('login');
                     setIsMenuOpen(false);
                   }}
-                  className="block w-full text-left px-4 py-3 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900"
+                  className="block w-full text-left px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg"
                 >
                   {t('nav.login')}
                 </button>

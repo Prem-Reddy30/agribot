@@ -50,12 +50,12 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = (email: string, password: string) => {
+  const handleLogin = (_email: string, _password: string) => {
     // Firebase auth state change will handle authentication
     setCurrentPage('chatbot');
   };
 
-  const handleSignUp = (name: string, email: string, password: string) => {
+  const handleSignUp = (_name: string, _email: string, _password: string) => {
     // Firebase auth state change will handle authentication
     setCurrentPage('chatbot');
   };
@@ -111,10 +111,10 @@ function App() {
     // Show loading screen while Firebase initializes
     if (loading) {
       return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+        <div className="min-h-screen page-gradient flex items-center justify-center">
+          <div className="text-center animate-fade-in-up">
+            <div className="w-14 h-14 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400 font-medium">Loading KrishiSahay...</p>
           </div>
         </div>
       );
@@ -165,7 +165,7 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
+        <div className="min-h-screen page-gradient transition-colors flex flex-col">
           {currentPage !== 'login' && currentPage !== 'signup' && currentPage !== 'admin-login' && currentPage !== 'admin-dashboard' && (
             <Navigation
               currentPage={currentPage}
