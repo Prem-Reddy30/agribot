@@ -41,6 +41,7 @@ export function DiseasePrediction() {
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageValidationError, setImageValidationError] = useState<string | null>(null);
 
   const MIN_CONFIDENCE = 0.8;
 
@@ -79,15 +80,58 @@ export function DiseasePrediction() {
     }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setDiseaseData(prev => ({ ...prev, imageFile: file }));
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+      setImageValidationError(null);
+
+      // Create image element to validate
+      const imageUrl = URL.createObjectURL(file);
+      const imageElement = new Image();
+
+      imageElement.onload = async () => {
+        try {
+          // Validate if the image is a plant/vegetation
+          const validation = await cnnService.validatePlantImage(imageElement);
+
+          if (!validation.isPlant) {
+            // Reject non-plant images
+            setImageValidationError(validation.reason);
+            setImagePreview(null);
+            setDiseaseData(prev => ({ ...prev, imageFile: undefined }));
+            URL.revokeObjectURL(imageUrl);
+            // Reset the file input
+            e.target.value = '';
+            return;
+          }
+
+          // Image is valid - set preview and data
+          setDiseaseData(prev => ({ ...prev, imageFile: file }));
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+          URL.revokeObjectURL(imageUrl);
+        } catch (error) {
+          console.error('Image validation error:', error);
+          // On validation error, still allow the image (fallback)
+          setDiseaseData(prev => ({ ...prev, imageFile: file }));
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+          URL.revokeObjectURL(imageUrl);
+        }
       };
-      reader.readAsDataURL(file);
+
+      imageElement.onerror = () => {
+        setImageValidationError('Failed to load the image. Please try a different file.');
+        URL.revokeObjectURL(imageUrl);
+      };
+
+      imageElement.src = imageUrl;
     }
   };
 
@@ -107,9 +151,6 @@ export function DiseasePrediction() {
       // Step 1: CNN Analysis (if image is provided)
       if (diseaseData.imageFile) {
         try {
-          // Load CNN model
-          await cnnService.loadModel();
-
           // Process image with CNN
           const imageElement = new Image();
           const imageUrl = URL.createObjectURL(diseaseData.imageFile);
@@ -120,8 +161,24 @@ export function DiseasePrediction() {
             imageElement.src = imageUrl;
           });
 
+          // Re-validate plant image before CNN analysis
+          const validation = await cnnService.validatePlantImage(imageElement);
+          if (!validation.isPlant) {
+            setImageValidationError(validation.reason);
+            setImagePreview(null);
+            setDiseaseData(prev => ({ ...prev, imageFile: undefined }));
+            setIsAnalyzing(false);
+            URL.revokeObjectURL(imageUrl);
+            return;
+          }
+
+          // Load CNN model
+          await cnnService.loadModel();
+
           const imageData = await cnnService.preprocessImage(imageElement);
           cnnResult = await cnnService.predict(imageData);
+
+          URL.revokeObjectURL(imageUrl);
 
           if (cnnResult.confidence < MIN_CONFIDENCE) {
             cnnResult = null;
@@ -287,25 +344,25 @@ export function DiseasePrediction() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-full mb-4">
             <AlertCircle className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('disease.title')}</h1>
-          <p className="text-gray-600">{t('disease.subtitle')}</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('disease.title')}</h1>
+          <p className="text-gray-600 dark:text-gray-300">{t('disease.subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Input Form */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <Leaf className="w-5 h-5 text-green-600" />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+              <Leaf className="w-5 h-5 text-green-600 dark:text-green-400" />
               {t('disease.info')}
             </h2>
 
             {/* Crop Type Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('disease.cropType')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('disease.cropType')}</label>
               <select
                 value={diseaseData.cropType}
                 onChange={(e) => setDiseaseData(prev => ({ ...prev, cropType: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 <option value="">{t('disease.selectCrop')}</option>
                 {cropTypes.map(crop => (
@@ -316,17 +373,17 @@ export function DiseasePrediction() {
 
             {/* Symptoms Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('disease.symptoms')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('disease.symptoms')}</label>
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                 {symptoms.map(symptom => (
-                  <label key={symptom} className="flex items-center space-x-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                  <label key={symptom} className="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
                     <input
                       type="checkbox"
                       checked={diseaseData.symptoms.includes(symptom)}
                       onChange={() => handleSymptomToggle(symptom)}
                       className="text-green-600 focus:ring-green-500"
                     />
-                    <span className="text-sm">{symptom}</span>
+                    <span className="text-sm text-gray-800 dark:text-gray-200">{symptom}</span>
                   </label>
                 ))}
               </div>
@@ -334,7 +391,7 @@ export function DiseasePrediction() {
 
             {/* Environmental Factors */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('disease.environmentalConditions')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('disease.environmentalConditions')}</label>
               <div className="grid grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <Thermometer className="w-4 h-4 text-orange-500" />
@@ -346,7 +403,7 @@ export function DiseasePrediction() {
                       ...prev,
                       environmentalFactors: { ...prev.environmentalFactors, temperature: e.target.value }
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -359,7 +416,7 @@ export function DiseasePrediction() {
                       ...prev,
                       environmentalFactors: { ...prev.environmentalFactors, humidity: e.target.value }
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -372,7 +429,7 @@ export function DiseasePrediction() {
                       ...prev,
                       environmentalFactors: { ...prev.environmentalFactors, rainfall: e.target.value }
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -380,8 +437,9 @@ export function DiseasePrediction() {
 
             {/* Image Upload */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('disease.uploadImage')}</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-green-500 transition-colors">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('disease.uploadImage')}</label>
+              <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${imageValidationError ? 'border-red-400 bg-red-50 dark:bg-red-900/10' : 'border-gray-300 dark:border-gray-600 hover:border-green-500'
+                }`}>
                 {imagePreview ? (
                   <div className="space-y-2">
                     <img src={imagePreview} alt="Plant" className="mx-auto h-32 w-32 object-cover rounded-lg" />
@@ -389,6 +447,7 @@ export function DiseasePrediction() {
                       onClick={() => {
                         setImagePreview(null);
                         setDiseaseData(prev => ({ ...prev, imageFile: undefined }));
+                        setImageValidationError(null);
                       }}
                       className="text-sm text-red-600 hover:text-red-700"
                     >
@@ -397,9 +456,9 @@ export function DiseasePrediction() {
                   </div>
                 ) : (
                   <div>
-                    <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <Camera className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
                     <label className="cursor-pointer">
-                      <span className="text-sm text-gray-600">Click to upload image</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Click to upload plant/vegetable image only</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -407,9 +466,29 @@ export function DiseasePrediction() {
                         className="hidden"
                       />
                     </label>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Only plant, leaf, and vegetable images are accepted</p>
                   </div>
                 )}
               </div>
+
+              {/* Image Validation Error Message */}
+              {imageValidationError && (
+                <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex-shrink-0 w-8 h-8 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Invalid Image Detected</p>
+                    <p className="text-sm text-red-700 dark:text-red-400">{imageValidationError}</p>
+                  </div>
+                  <button
+                    onClick={() => setImageValidationError(null)}
+                    className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -417,7 +496,7 @@ export function DiseasePrediction() {
               <button
                 onClick={analyzeDisease}
                 disabled={isAnalyzing}
-                className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {isAnalyzing ? (
                   <>
@@ -433,7 +512,7 @@ export function DiseasePrediction() {
               </button>
               <button
                 onClick={resetForm}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {t('disease.reset')}
               </button>
@@ -479,7 +558,7 @@ export function DiseasePrediction() {
                     )}
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-red-600 rounded-lg p-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg p-4">
                     <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">{t('disease.treatment')}</h3>
                     <p className="text-blue-800 dark:text-blue-300 text-sm">{predictionResult.treatment}</p>
                   </div>
@@ -506,12 +585,12 @@ export function DiseasePrediction() {
             )}
 
             {/* Tips Card */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-              <h3 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-6">
+              <h3 className="font-semibold text-yellow-900 dark:text-yellow-300 mb-3 flex items-center gap-2">
                 <Sun className="w-5 h-5" />
                 {t('disease.quickTips')}
               </h3>
-              <ul className="text-yellow-800 text-sm space-y-2">
+              <ul className="text-yellow-800 dark:text-yellow-300 text-sm space-y-2">
                 <li>• Early detection increases treatment success rate</li>
                 <li>• Regular monitoring helps prevent disease spread</li>
                 <li>• Maintain proper plant nutrition for disease resistance</li>

@@ -36,13 +36,16 @@ html {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #94a3b8;
   border-radius: 999px;
 }
+
 .dark ::-webkit-scrollbar-thumb {
   background: #475569;
 }
@@ -59,6 +62,7 @@ html {
 .page-gradient {
   background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 30%, #f0fdfa 60%, #ecfdf5 100%);
 }
+
 .dark .page-gradient {
   background: linear-gradient(135deg, #0f172a 0%, #0c1a2e 30%, #0d1f2d 60%, #0f172a 100%);
 }
@@ -72,21 +76,46 @@ html {
   pointer-events: none;
   animation: blobFloat 8s ease-in-out infinite alternate;
 }
-.blob-1 { animation-delay: 0s; }
-.blob-2 { animation-delay: 2s; }
-.blob-3 { animation-delay: 4s; }
+
+.blob-1 {
+  animation-delay: 0s;
+}
+
+.blob-2 {
+  animation-delay: 2s;
+}
+
+.blob-3 {
+  animation-delay: 4s;
+}
 
 @keyframes blobFloat {
-  0%   { transform: translate(0, 0) scale(1); }
-  50%  { transform: translate(30px, -20px) scale(1.1); }
-  100% { transform: translate(-20px, 15px) scale(0.95); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(30px, -20px) scale(1.1);
+  }
+
+  100% {
+    transform: translate(-20px, 15px) scale(0.95);
+  }
 }
 
 /* ── Fade-in animation ───────────────────────── */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
@@ -98,6 +127,7 @@ html {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
 .dark .gradient-text {
   background: linear-gradient(135deg, #34d399, #2dd4bf);
   -webkit-background-clip: text;
@@ -115,10 +145,12 @@ html {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.3s, transform 0.3s;
 }
+
 .premium-card:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
 }
+
 .dark .premium-card {
   background: rgba(15, 23, 42, 0.75);
   border-color: rgba(51, 65, 85, 0.5);
@@ -129,14 +161,30 @@ html {
 .btn-primary {
   @apply bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-xl shadow-lg transition-all;
 }
+
 .btn-primary:hover {
   @apply from-emerald-600 to-teal-600 shadow-emerald-500/30 -translate-y-0.5;
 }
+
 .btn-primary:active {
   @apply translate-y-0;
 }
 
-/* ── Dark mode overrides (minimal, let Tailwind dark: handle most) ── */
+/* ── Form element theme overrides ────────────────────────── */
+input,
+textarea,
+select {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #111827;
+  transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #111827;
+}
+
 .dark input,
 .dark textarea,
 .dark select {
@@ -144,8 +192,32 @@ html {
   border-color: #334155;
   color: #f1f5f9;
 }
+
+.dark select option {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #10b981;
+  outline: none;
+}
+
 .dark input:focus,
 .dark textarea:focus,
 .dark select:focus {
   border-color: #10b981;
+}
+
+/* Ensure proper placeholder colors */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6b7280;
 }
